@@ -282,7 +282,7 @@
     let premioGanho = "";
     let cliquesRestantes = 3;
 
-    function avancarParaWhatsapp() {
+    async function avancarParaWhatsapp() {
         const nome = document.getElementById("nome").value;
         const zap = document.getElementById("whatsapp").value;
         const token = document.getElementById("token").value;
@@ -291,6 +291,38 @@
             alert("Por favor, preencha todos os campos para continuar.");
             return;
         }
+
+        // Validação instantânea do formato do WhatsApp (mesma regra do servidor)
+        const somenteNumeros = zap.replace(/\D/g, "");
+        if (!/^\d{10,11}$/.test(somenteNumeros)) {
+            alert("WhatsApp inválido. Use o formato (DD) 9XXXX-XXXX, com DDD.");
+            return;
+        }
+
+        const botaoAcessar = document.querySelector("#etapa-1 button.btn-primario");
+        const textoOriginal = botaoAcessar.innerText;
+        botaoAcessar.disabled = true;
+        botaoAcessar.innerText = "Verificando...";
+
+        try {
+            const resposta = await fetch(`https://cappri.onrender.com/verificar-token/${token}`);
+            const dados = await resposta.json();
+
+            if (!resposta.ok || !dados.valido) {
+                alert("Aviso: " + (dados.mensagem || dados.detail || "Este convite não é válido."));
+                botaoAcessar.disabled = false;
+                botaoAcessar.innerText = textoOriginal;
+                return;
+            }
+        } catch (erro) {
+            alert("Erro de conexão. Verifique sua internet e tente novamente.");
+            botaoAcessar.disabled = false;
+            botaoAcessar.innerText = textoOriginal;
+            return;
+        }
+
+        botaoAcessar.disabled = false;
+        botaoAcessar.innerText = textoOriginal;
 
         document.getElementById("etapa-1").style.display = "none";
         document.getElementById("roleta-container").style.display = "block";
