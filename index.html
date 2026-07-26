@@ -357,12 +357,16 @@ function compartilharWpp() {
         document.getElementById("botao-girar-real").innerText = "Sorteando...";
 
         try {
-            const url_api = `https://cappri.onrender.com/sortear/${token}?nome_cliente=${nome}&whatsapp_cliente=${zap}`;
-            const resposta = await fetch(url_api, { method: "POST" });
+            const url_api = `https://cappri.onrender.com/sortear/${token}`;
+            const resposta = await fetch(url_api, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ nome: nome, whatsapp: zap })
+            });
             const dados = await resposta.json();
 
-            if (dados.erro) {
-                alert("Aviso: " + dados.erro);
+            if (!resposta.ok) {
+                alert("Aviso: " + (dados.detail || "Não foi possível concluir o sorteio."));
                 document.getElementById("roleta-container").style.display = "none";
                 document.getElementById("etapa-3").style.display = "none";
                 document.getElementById("etapa-1").style.display = "block";
@@ -376,13 +380,9 @@ function compartilharWpp() {
 
             premioGanho = dados.premio;
 
-            let segmentoAlvo = 1;
-            for(let i = 1; i <= roleta.numSegments; i++){
-                if(premioGanho.includes(roleta.segments[i].text) || roleta.segments[i].text.includes(premioGanho.split(' ')[0])){
-                    segmentoAlvo = i;
-                    break;
-                }
-            }
+            // O índice da fatia agora vem pronto da API (mais confiável
+            // do que tentar adivinhar comparando texto).
+            let segmentoAlvo = dados.indice_roleta || 1;
 
             let anguloParada = roleta.getRandomForSegment(segmentoAlvo);
             roleta.animation.stopAngle = anguloParada;
