@@ -523,14 +523,31 @@
         document.getElementById("etapa-2").style.display = "block";
 
 if (!roleta) {
+        // A roleta agora tem largura variável (responsiva). O <canvas>
+        // precisa desenhar numa resolução nítida de verdade, calculada
+        // a partir do tamanho real exibido x a densidade de pixels da
+        // tela (Retina/iPhone = 3x). Sem isso, em telas de alta
+        // densidade o anel dourado e os textos saem borrados/serrilhados.
+        const canvasRoleta = document.getElementById('canvasRoleta');
+        const dpr = window.devicePixelRatio || 1;
+        const tamanhoExibido = canvasRoleta.clientWidth || 320;
+        const resolucao = Math.round(tamanhoExibido * dpr);
+        canvasRoleta.width = resolucao;
+        canvasRoleta.height = resolucao;
+
+        // 350 foi o tamanho de referência usado no desenho original —
+        // escalamos as demais medidas (fonte, margem, espessura da
+        // linha) na mesma proporção da nova resolução.
+        const escala = resolucao / 350;
+
         roleta = new Winwheel({
             'canvasId': 'canvasRoleta',
             'numSegments': 12, // Agora são 12 fatias!
-            'outerRadius': 175,
-            'textFontSize': 11, // Fonte menor para caber nomes longos
+            'outerRadius': resolucao / 2,
+            'textFontSize': 11 * escala, // Fonte menor para caber nomes longos
             'textFontFamily': 'Montserrat',
-            'textMargin': 15,
-            'lineWidth': 1.5,
+            'textMargin': 15 * escala,
+            'lineWidth': 1.5 * escala,
             'strokeStyle': '#D4AF37', 
             'segments': [
                 // Usando a paleta de luxo intercalada
