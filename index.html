@@ -390,6 +390,12 @@
     let roleta;
     let premioGanho = "";
     let cliquesRestantes = 3;
+    let compartilhamentoEmAndamento = false;
+
+    // Mensagem enviada quando a cliente compartilha no WhatsApp.
+    // É só uma frase — pode me pedir pra ajustar o tom quando quiser.
+    const MENSAGEM_COMPARTILHAMENTO =
+        "Acabei de descobrir a Roleta de Prêmios da Cappri! ✨ Comprando acima de R$200 você garante um giro e pode ganhar desde cupons até R$500 em roupas. Dá uma olhada no Instagram pra saber quando tem: instagram.com/uze.cappri 💫👗";
 
     // --- Utilitários de feedback visual (substituem os alert() nativos) ---
 
@@ -552,11 +558,62 @@ if (!roleta) {
     }
     }
 function compartilharWpp() {
+        if (compartilhamentoEmAndamento) return;
+
+        const botaoCompartilhar = document.querySelector("#etapa-2 .btn-wpp");
+        const textoOriginalBotao = botaoCompartilhar.innerText;
+
+        compartilhamentoEmAndamento = true;
+        botaoCompartilhar.disabled = true;
+        botaoCompartilhar.innerText = "Aguardando confirmação...";
+
+        const texto = encodeURIComponent(MENSAGEM_COMPARTILHAMENTO);
+        const linkApp = `whatsapp://send?text=${texto}`;
+        const linkWeb = `https://wa.me/?text=${texto}`;
+
+        let horaSaida = null;
+
+        // Se em 1,5s a página continuar visível, o app provavelmente não
+        // abriu (ex: WhatsApp não instalado, ou é um computador sem o
+        // app) — nesse caso, tentamos o WhatsApp Web como alternativa.
+        const timeoutFallback = setTimeout(() => {
+            if (document.visibilityState === "visible") {
+                window.open(linkWeb, "_blank");
+            }
+        }, 1500);
+
+        function finalizarTentativa(compartilhoValido) {
+            document.removeEventListener("visibilitychange", aoMudarVisibilidade);
+            clearTimeout(timeoutFallback);
+            compartilhamentoEmAndamento = false;
+            botaoCompartilhar.disabled = false;
+            botaoCompartilhar.innerText = textoOriginalBotao;
+
+            if (compartilhoValido) {
+                registrarCompartilhamentoValido();
+            } else {
+                mostrarAviso("Não conseguimos confirmar o envio. Tente compartilhar novamente.", "erro");
+            }
+        }
+
+        function aoMudarVisibilidade() {
+            if (document.visibilityState === "hidden") {
+                horaSaida = Date.now();
+                clearTimeout(timeoutFallback);
+            } else if (document.visibilityState === "visible" && horaSaida) {
+                const tempoFora = Date.now() - horaSaida;
+                // Tempo mínimo plausível de quem realmente foi enviar a
+                // mensagem, em vez de só cancelar o diálogo de abertura.
+                finalizarTentativa(tempoFora > 1200);
+            }
+        }
+
+        document.addEventListener("visibilitychange", aoMudarVisibilidade);
+        window.location.href = linkApp;
+    }
+
+    function registrarCompartilhamentoValido() {
         cliquesRestantes--;
-        const texto = encodeURIComponent("Descobri um mimo especial na Cappri! Se você comprar acima de R$200, ganha um giro na roleta de prêmios luxuosos. ✨🎁");
-        
-        // NOVO COMANDO: "whatsapp://" força o celular a abrir o aplicativo nativo
-        window.location.href = `whatsapp://send?text=${texto}`;
 
         if (cliquesRestantes > 0) {
             document.getElementById("contador").innerText = cliquesRestantes;
