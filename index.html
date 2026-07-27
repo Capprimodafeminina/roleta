@@ -64,24 +64,112 @@
         h2 { font-size: 28px; font-weight: 700; }
         p { font-size: 14px; line-height: 1.6; font-weight: 400; margin-bottom: 25px; color: #666; }
 
-        input { 
-            width: 100%; 
-            padding: 12px 5px; 
-            margin: 10px 0 20px 0; 
+        .campo-flutuante {
+            position: relative;
+            margin: 22px 0 26px 0;
+            text-align: left;
+        }
+        .campo-flutuante input {
+            width: 100%;
+            padding: 14px 5px 8px 5px;
             background: transparent;
             border: none;
-            border-bottom: 1px solid #ddd; 
-            font-size: 15px; 
+            border-bottom: 1px solid #ddd;
+            font-size: 16px;
             font-family: 'Montserrat', sans-serif;
             color: var(--cor-texto);
-            transition: 0.3s;
+            transition: border-color 0.3s;
             box-sizing: border-box;
         }
-        input:focus {
+        .campo-flutuante input:focus {
             outline: none;
             border-bottom: 2px solid var(--cor-rose-gold);
         }
-        input::placeholder { color: #bbb; }
+        .campo-flutuante label {
+            position: absolute;
+            left: 5px;
+            top: 14px;
+            font-size: 15px;
+            color: #bbb;
+            pointer-events: none;
+            transition: all 0.25s ease;
+        }
+        .campo-flutuante input:focus ~ label,
+        .campo-flutuante input:not(:placeholder-shown) ~ label {
+            top: -10px;
+            font-size: 11px;
+            color: var(--cor-bordeaux);
+            letter-spacing: 0.5px;
+        }
+        .campo-flutuante .mensagem-erro {
+            display: none;
+            font-size: 11px;
+            color: #A83246;
+            margin-top: 5px;
+        }
+        .campo-flutuante.erro input {
+            border-bottom: 2px solid #A83246;
+        }
+        .campo-flutuante.erro .mensagem-erro {
+            display: block;
+        }
+        @keyframes shake-campo {
+            0%, 100% { transform: translateX(0); }
+            20%, 60% { transform: translateX(-6px); }
+            40%, 80% { transform: translateX(6px); }
+        }
+        .campo-flutuante.shake {
+            animation: shake-campo 0.4s ease;
+        }
+
+        .consentimento {
+            display: flex;
+            align-items: flex-start;
+            gap: 8px;
+            text-align: left;
+            font-size: 12px;
+            line-height: 1.4;
+            color: #888;
+            margin: 4px 0 24px 0;
+            cursor: pointer;
+            user-select: none;
+        }
+        .consentimento input[type="checkbox"] {
+            width: 16px;
+            height: 16px;
+            margin-top: 2px;
+            accent-color: var(--cor-bordeaux);
+            flex-shrink: 0;
+            cursor: pointer;
+        }
+        .consentimento.erro span {
+            color: #A83246;
+        }
+
+        .aviso-flutuante {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%) translateY(-16px);
+            background: #4A3B3E;
+            color: white;
+            padding: 13px 22px;
+            border-radius: 12px;
+            font-size: 13px;
+            font-family: 'Montserrat', sans-serif;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.25);
+            z-index: 1000;
+            opacity: 0;
+            max-width: 90%;
+            text-align: center;
+            pointer-events: none;
+            transition: all 0.3s ease;
+        }
+        .aviso-flutuante.mostrar {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0);
+        }
+        .aviso-flutuante.erro { background: var(--cor-bordeaux); }
 
         button { 
             width: 100%; 
@@ -230,10 +318,29 @@
         <div id="etapa-1" class="etapa">
             <h2>Gire e Ganhe</h2>
             <p>Preencha seus dados e insira o convite dourado para revelar seu prêmio exclusivo.</p>
-            
-            <input type="text" id="nome" placeholder="Seu Nome Completo" required>
-            <input type="text" id="whatsapp" placeholder="Seu WhatsApp" required>
-            <input type="text" id="token" placeholder="Código de Autorização" required>
+
+            <div class="campo-flutuante" id="campo-nome">
+                <input type="text" id="nome" placeholder=" " required>
+                <label for="nome">Seu Nome Completo</label>
+                <span class="mensagem-erro">Digite seu nome completo.</span>
+            </div>
+
+            <div class="campo-flutuante" id="campo-whatsapp">
+                <input type="tel" inputmode="numeric" id="whatsapp" placeholder=" " maxlength="16" required>
+                <label for="whatsapp">Seu WhatsApp</label>
+                <span class="mensagem-erro">WhatsApp inválido. Use (DD) 9XXXX-XXXX.</span>
+            </div>
+
+            <div class="campo-flutuante" id="campo-token">
+                <input type="text" id="token" placeholder=" " required>
+                <label for="token">Código de Autorização</label>
+                <span class="mensagem-erro">Verifique o código informado.</span>
+            </div>
+
+            <label class="consentimento" id="campo-consentimento">
+                <input type="checkbox" id="consentimento">
+                <span>Aceito receber contato da Cappri via WhatsApp sobre este sorteio.</span>
+            </label>
             
             <button class="btn-primario" onclick="avancarParaWhatsapp()">Acessar Roleta</button>
         </div>
@@ -282,20 +389,97 @@
     let premioGanho = "";
     let cliquesRestantes = 3;
 
-    async function avancarParaWhatsapp() {
-        const nome = document.getElementById("nome").value;
-        const zap = document.getElementById("whatsapp").value;
-        const token = document.getElementById("token").value;
+    // --- Utilitários de feedback visual (substituem os alert() nativos) ---
 
-        if (!nome || !zap || !token) {
-            alert("Por favor, preencha todos os campos para continuar.");
+    let avisoTimeout;
+    function mostrarAviso(mensagem, tipo = "erro") {
+        let aviso = document.getElementById("aviso-flutuante");
+        if (!aviso) {
+            aviso = document.createElement("div");
+            aviso.id = "aviso-flutuante";
+            document.body.appendChild(aviso);
+        }
+        aviso.textContent = mensagem;
+        aviso.className = "aviso-flutuante mostrar " + tipo;
+        clearTimeout(avisoTimeout);
+        avisoTimeout = setTimeout(() => aviso.classList.remove("mostrar"), 4000);
+    }
+
+    function marcarErro(idCampo, mostrar) {
+        const campo = document.getElementById(idCampo);
+        if (!campo) return;
+        if (mostrar) {
+            campo.classList.add("erro");
+            campo.classList.remove("shake");
+            void campo.offsetWidth; // força reinício da animação
+            campo.classList.add("shake");
+        } else {
+            campo.classList.remove("erro");
+        }
+    }
+
+    function limparErros() {
+        ["campo-nome", "campo-whatsapp", "campo-token"].forEach(id => marcarErro(id, false));
+        document.getElementById("campo-consentimento").classList.remove("erro");
+    }
+
+    // --- Máscara do WhatsApp enquanto digita: (DD) 9XXXX-XXXX ---
+
+    function aplicarMascaraWhatsapp(valor) {
+        let numeros = valor.replace(/\D/g, "").slice(0, 11);
+        if (numeros.length === 0) return "";
+        let ddd = numeros.slice(0, 2);
+        let resto = numeros.slice(2);
+        let formatado = "(" + ddd;
+        if (resto.length > 0) formatado += ") ";
+        if (numeros.length <= 10) {
+            formatado += resto.slice(0, 4);
+            if (resto.length > 4) formatado += "-" + resto.slice(4, 8);
+        } else {
+            formatado += resto.slice(0, 5);
+            if (resto.length > 5) formatado += "-" + resto.slice(5, 9);
+        }
+        return formatado;
+    }
+
+    document.getElementById("whatsapp").addEventListener("input", function (e) {
+        e.target.value = aplicarMascaraWhatsapp(e.target.value);
+    });
+
+    async function avancarParaWhatsapp() {
+        limparErros();
+
+        const nome = document.getElementById("nome").value.trim();
+        const zap = document.getElementById("whatsapp").value;
+        const token = document.getElementById("token").value.trim();
+        const consentimentoMarcado = document.getElementById("consentimento").checked;
+
+        let temErro = false;
+
+        if (!nome) {
+            marcarErro("campo-nome", true);
+            temErro = true;
+        }
+
+        const somenteNumeros = zap.replace(/\D/g, "");
+        if (!zap || !/^\d{10,11}$/.test(somenteNumeros)) {
+            marcarErro("campo-whatsapp", true);
+            temErro = true;
+        }
+
+        if (!token) {
+            marcarErro("campo-token", true);
+            temErro = true;
+        }
+
+        if (temErro) {
+            mostrarAviso("Confira os campos destacados antes de continuar.", "erro");
             return;
         }
 
-        // Validação instantânea do formato do WhatsApp (mesma regra do servidor)
-        const somenteNumeros = zap.replace(/\D/g, "");
-        if (!/^\d{10,11}$/.test(somenteNumeros)) {
-            alert("WhatsApp inválido. Use o formato (DD) 9XXXX-XXXX, com DDD.");
+        if (!consentimentoMarcado) {
+            document.getElementById("campo-consentimento").classList.add("erro");
+            mostrarAviso("Você precisa aceitar para continuar.", "erro");
             return;
         }
 
@@ -309,13 +493,14 @@
             const dados = await resposta.json();
 
             if (!resposta.ok || !dados.valido) {
-                alert("Aviso: " + (dados.mensagem || dados.detail || "Este convite não é válido."));
+                marcarErro("campo-token", true);
+                mostrarAviso(dados.mensagem || dados.detail || "Este convite não é válido.", "erro");
                 botaoAcessar.disabled = false;
                 botaoAcessar.innerText = textoOriginal;
                 return;
             }
         } catch (erro) {
-            alert("Erro de conexão. Verifique sua internet e tente novamente.");
+            mostrarAviso("Erro de conexão. Verifique sua internet e tente novamente.", "erro");
             botaoAcessar.disabled = false;
             botaoAcessar.innerText = textoOriginal;
             return;
@@ -398,7 +583,7 @@ function compartilharWpp() {
             const dados = await resposta.json();
 
             if (!resposta.ok) {
-                alert("Aviso: " + (dados.detail || "Não foi possível concluir o sorteio."));
+                mostrarAviso(dados.detail || "Não foi possível concluir o sorteio.", "erro");
                 document.getElementById("roleta-container").style.display = "none";
                 document.getElementById("etapa-3").style.display = "none";
                 document.getElementById("etapa-1").style.display = "block";
@@ -421,7 +606,7 @@ function compartilharWpp() {
             roleta.startAnimation();
 
         } catch (erro) {
-            alert("Erro de conexão. Verifique o servidor.");
+            mostrarAviso("Erro de conexão. Verifique o servidor.", "erro");
             document.getElementById("botao-girar-real").disabled = false;
             document.getElementById("botao-girar-real").innerText = "Girar Roleta!";
         }
