@@ -176,7 +176,19 @@
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ senha: senha })
             });
-            const dados = await resposta.json();
+
+            let dados;
+            try {
+                dados = await resposta.json();
+            } catch (erroDeLeitura) {
+                // A resposta não veio em JSON — normalmente é uma página
+                // de erro temporária do servidor "acordando" do modo de
+                // economia de energia, não um problema real de conexão.
+                erro.innerText = "O servidor ainda está iniciando (comum na primeira chamada depois de um tempo parado). Aguarde uns 20-30 segundos e tente de novo.";
+                botao.disabled = false;
+                botao.innerText = "Gerar Convite";
+                return;
+            }
 
             if (!resposta.ok) {
                 erro.innerText = dados.detail || "Não foi possível gerar o convite.";
