@@ -410,8 +410,8 @@
             <div id="etapa-2" class="etapa" style="margin-top: -40px; position: relative; z-index: 20;">
                 <div style="background: rgba(255,255,255,0.95); padding: 25px; border-radius: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.1);">
                     <h3>Quase lá!</h3>
-                    <p>Para destravar o seu giro, compartilhe a experiência Cappri com amigas.</p>
-                    <p style="font-size: 16px;">Faltam: <strong id="contador" style="color: var(--cor-bordeaux); font-size: 20px;">3</strong> envios.</p>
+                    <p>Para destravar seu giro e garantir seu prêmio, envie esta mensagem para <strong>3 amigas</strong> no WhatsApp.</p>
+                    <p style="font-size: 12px; color: #999; margin-top: -15px;">Dica: ao compartilhar, você pode selecionar várias conversas de uma vez.</p>
                     <button class="btn-wpp" onclick="compartilharWpp()">Compartilhar 💬</button>
                 </div>
             </div>
@@ -439,7 +439,6 @@
     let roleta;
     let premioGanho = "";
     let codigoVoucher = "";
-    let cliquesRestantes = 3;
     let compartilhamentoEmAndamento = false;
 
     // Quantos dias o voucher vale a partir do momento em que é gerado.
@@ -769,15 +768,9 @@ function compartilharWpp() {
     }
 
     function registrarCompartilhamentoValido() {
-        cliquesRestantes--;
-
-        if (cliquesRestantes > 0) {
-            document.getElementById("contador").innerText = cliquesRestantes;
-        } else {
-            document.getElementById("etapa-2").style.display = "none";
-            document.getElementById("roleta-visual").classList.remove("blur-effect");
-            document.getElementById("etapa-3").style.display = "block";
-        }
+        document.getElementById("etapa-2").style.display = "none";
+        document.getElementById("roleta-visual").classList.remove("blur-effect");
+        document.getElementById("etapa-3").style.display = "block";
     }
 
     async function dispararSorteio() {
@@ -806,9 +799,7 @@ function compartilharWpp() {
                 document.getElementById("roleta-container").style.display = "none";
                 document.getElementById("etapa-3").style.display = "none";
                 document.getElementById("etapa-1").style.display = "block";
-                
-                cliquesRestantes = 3;
-                document.getElementById("contador").innerText = cliquesRestantes;
+
                 document.getElementById("botao-girar-real").disabled = false;
                 document.getElementById("botao-girar-real").innerText = "Girar Roleta!";
                 return;
