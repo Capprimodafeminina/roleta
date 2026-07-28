@@ -481,27 +481,46 @@
         osc.stop(ctx.currentTime + inicio + duracao + 0.05);
     }
 
-    function tocarSomGiro() {
+    function tocarTique(instante) {
         const ctx = obterAudioContext();
         if (!ctx) return;
         const osc = ctx.createOscillator();
         const ganho = ctx.createGain();
-        osc.type = "triangle";
-        osc.frequency.setValueAtTime(180, ctx.currentTime);
-        osc.frequency.exponentialRampToValueAtTime(420, ctx.currentTime + 1.2);
-        ganho.gain.setValueAtTime(0.001, ctx.currentTime);
-        ganho.gain.linearRampToValueAtTime(0.22, ctx.currentTime + 0.3);
-        ganho.gain.linearRampToValueAtTime(0.001, ctx.currentTime + 4.8);
+        osc.type = "square";
+        osc.frequency.value = 950 + Math.random() * 250; // leve variação = soa mais natural
+        ganho.gain.setValueAtTime(0.0001, ctx.currentTime + instante);
+        ganho.gain.linearRampToValueAtTime(0.25, ctx.currentTime + instante + 0.005);
+        ganho.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + instante + 0.05);
         osc.connect(ganho);
         ganho.connect(ctx.destination);
-        osc.start();
-        osc.stop(ctx.currentTime + 5);
+        osc.start(ctx.currentTime + instante);
+        osc.stop(ctx.currentTime + instante + 0.06);
+    }
+
+    function tocarSomGiro() {
+        // Simula o "tic-tic-tic" de um pino físico batendo nas
+        // divisórias da roleta enquanto ela gira e desacelera — os
+        // cliques começam rápidos e vão espaçando até o final, seguindo
+        // a mesma curva de desaceleração (ease-out) usada na animação.
+        const duracaoTotal = 5;      // igual ao "duration" da animação da roleta
+        const voltasAprox = 8.6;     // aproximação: 8 voltas configuradas + margem até parar
+        const rotacaoTotalGraus = voltasAprox * 360;
+        const grausPorTique = 30;    // 1 clique por fatia (12 fatias = 30° cada)
+        const totalTiques = Math.floor(rotacaoTotalGraus / grausPorTique);
+
+        for (let k = 1; k <= totalTiques; k++) {
+            const progresso = (k * grausPorTique) / rotacaoTotalGraus; // 0 a 1
+            const tempoNormalizado = 1 - Math.cbrt(1 - progresso);     // ease-out cúbica
+            tocarTique(tempoNormalizado * duracaoTotal);
+        }
     }
 
     function tocarSomVitoria() {
-        tocarTom(523.25, 0, 0.25, 0.3);    // Dó5
-        tocarTom(659.25, 0.15, 0.25, 0.3); // Mi5
-        tocarTom(783.99, 0.3, 0.55, 0.34);  // Sol5
+        // Pequena fanfarra ascendente, tipo "conquista desbloqueada"
+        tocarTom(523.25, 0, 0.18, 0.3);     // Dó5
+        tocarTom(659.25, 0.12, 0.18, 0.3);  // Mi5
+        tocarTom(783.99, 0.24, 0.22, 0.32); // Sol5
+        tocarTom(1046.5, 0.4, 0.5, 0.3);    // Dó6 — nota final, mais aguda
     }
 
     // --- Utilitários de feedback visual (substituem os alert() nativos) ---
