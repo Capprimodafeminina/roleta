@@ -480,20 +480,58 @@
         osc.stop(ctx.currentTime + inicio + duracao + 0.05);
     }
 
+    function criarBufferRuido(ctx, duracao) {
+        const tamanho = Math.max(1, Math.ceil(ctx.sampleRate * duracao));
+        const buffer = ctx.createBuffer(1, tamanho, ctx.sampleRate);
+        const dados = buffer.getChannelData(0);
+        for (let i = 0; i < tamanho; i++) {
+            // Ruído branco com um decaimento leve já embutido na própria
+            // amostra, pra nascer com uma textura mais "seca" (percussiva).
+            dados[i] = (Math.random() * 2 - 1) * (1 - i / tamanho);
+        }
+        return buffer;
+    }
+
     function tocarTique(instante) {
         const ctx = obterAudioContext();
         if (!ctx) return;
-        const osc = ctx.createOscillator();
-        const ganho = ctx.createGain();
-        osc.type = "square";
-        osc.frequency.value = 950 + Math.random() * 250; // leve variação = soa mais natural
-        ganho.gain.setValueAtTime(0.0001, ctx.currentTime + instante);
-        ganho.gain.linearRampToValueAtTime(0.25, ctx.currentTime + instante + 0.005);
-        ganho.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + instante + 0.05);
-        osc.connect(ganho);
-        ganho.connect(ctx.destination);
-        osc.start(ctx.currentTime + instante);
-        osc.stop(ctx.currentTime + instante + 0.06);
+        const agora = ctx.currentTime + instante;
+
+        // Parte 1: o "clique" propriamente dito — ruído passado por um
+        // filtro, como uma lingueta física batendo numa fatia da
+        // roleta. É essa textura de ruído (não um tom puro) que faz
+        // soar mecânico em vez de eletrônico.
+        const duracaoClique = 0.035;
+        const fonte = ctx.createBufferSource();
+        fonte.buffer = criarBufferRuido(ctx, duracaoClique);
+
+        const filtro = ctx.createBiquadFilter();
+        filtro.type = "bandpass";
+        filtro.frequency.value = 500 + Math.random() * 200; // grave, não agudo
+        filtro.Q.value = 0.8;
+
+        const ganhoClique = ctx.createGain();
+        ganhoClique.gain.setValueAtTime(0.55, agora);
+        ganhoClique.gain.exponentialRampToValueAtTime(0.001, agora + duracaoClique);
+
+        fonte.connect(filtro);
+        filtro.connect(ganhoClique);
+        ganhoClique.connect(ctx.destination);
+        fonte.start(agora);
+        fonte.stop(agora + duracaoClique + 0.01);
+
+        // Parte 2: um "corpo" grave por baixo do clique, dando peso —
+        // como a ressonância da madeira/plástico da roleta.
+        const corpo = ctx.createOscillator();
+        corpo.type = "triangle";
+        corpo.frequency.value = 150 + Math.random() * 40;
+        const ganhoCorpo = ctx.createGain();
+        ganhoCorpo.gain.setValueAtTime(0.22, agora);
+        ganhoCorpo.gain.exponentialRampToValueAtTime(0.001, agora + 0.05);
+        corpo.connect(ganhoCorpo);
+        ganhoCorpo.connect(ctx.destination);
+        corpo.start(agora);
+        corpo.stop(agora + 0.06);
     }
 
     function tocarSomGiro() {
