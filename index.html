@@ -342,6 +342,19 @@
             letter-spacing: 0.5px;
             margin-top: -10px !important;
         }
+        .codigo-voucher {
+            display: inline-block;
+            font-family: 'Montserrat', monospace;
+            font-size: 13px;
+            font-weight: 600;
+            letter-spacing: 1.5px;
+            color: #4A3B3E;
+            background: #F4EFE6;
+            border: 1px solid #E6D9BE;
+            padding: 5px 14px;
+            border-radius: 20px;
+            margin-top: 4px !important;
+        }
     </style>
 </head>
 <body>
@@ -415,6 +428,7 @@
                 <p>Apresente esta tela no caixa para retirar o seu presente.</p>
                 <div class="premio-texto" id="nome-premio-final"></div>
                 <p class="validade-voucher" id="validade-voucher"></p>
+                <p class="codigo-voucher" id="codigo-voucher"></p>
                 <p style="font-size: 12px; color: #999; margin-bottom: 0;">Válido apenas para compras aprovadas.</p>
             </div>
         </div>
@@ -424,6 +438,7 @@
 <script>
     let roleta;
     let premioGanho = "";
+    let codigoVoucher = "";
     let cliquesRestantes = 3;
     let compartilhamentoEmAndamento = false;
 
@@ -475,7 +490,7 @@
         osc.frequency.setValueAtTime(180, ctx.currentTime);
         osc.frequency.exponentialRampToValueAtTime(420, ctx.currentTime + 1.2);
         ganho.gain.setValueAtTime(0.001, ctx.currentTime);
-        ganho.gain.linearRampToValueAtTime(0.05, ctx.currentTime + 0.3);
+        ganho.gain.linearRampToValueAtTime(0.22, ctx.currentTime + 0.3);
         ganho.gain.linearRampToValueAtTime(0.001, ctx.currentTime + 4.8);
         osc.connect(ganho);
         ganho.connect(ctx.destination);
@@ -484,9 +499,9 @@
     }
 
     function tocarSomVitoria() {
-        tocarTom(523.25, 0, 0.25, 0.12);    // Dó5
-        tocarTom(659.25, 0.15, 0.25, 0.12); // Mi5
-        tocarTom(783.99, 0.3, 0.5, 0.14);   // Sol5
+        tocarTom(523.25, 0, 0.25, 0.3);    // Dó5
+        tocarTom(659.25, 0.15, 0.25, 0.3); // Mi5
+        tocarTom(783.99, 0.3, 0.55, 0.34);  // Sol5
     }
 
     // --- Utilitários de feedback visual (substituem os alert() nativos) ---
@@ -781,6 +796,7 @@ function compartilharWpp() {
             }
 
             premioGanho = dados.premio;
+            codigoVoucher = dados.codigo_voucher || "";
 
             // O índice da fatia agora vem pronto da API (mais confiável
             // do que tentar adivinhar comparando texto).
@@ -806,6 +822,9 @@ function compartilharWpp() {
         dataValidade.setDate(dataValidade.getDate() + DIAS_VALIDADE_VOUCHER);
         const dataFormatada = dataValidade.toLocaleDateString("pt-BR");
         document.getElementById("validade-voucher").innerText = `Válido até ${dataFormatada}`;
+        document.getElementById("codigo-voucher").innerText = codigoVoucher
+            ? `Código de conferência: ${codigoVoucher}`
+            : "";
 
         document.getElementById("etapa-4").style.display = "block";
 
