@@ -441,6 +441,15 @@
     let codigoVoucher = "";
     let compartilhamentoEmAndamento = false;
 
+    // Se o link veio de um QR code gerado no caixa, o código já chega
+    // pronto na URL (?token=...) — preenche sozinho, sem a cliente
+    // precisar digitar nada.
+    const parametrosDaUrl = new URLSearchParams(window.location.search);
+    const tokenDaUrl = parametrosDaUrl.get("token");
+    if (tokenDaUrl) {
+        document.getElementById("token").value = tokenDaUrl;
+    }
+
     // Quantos dias o voucher vale a partir do momento em que é gerado.
     const DIAS_VALIDADE_VOUCHER = 15;
 
