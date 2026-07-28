@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
 
-    <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/qrcode@1/build/qrcode.min.js"></script>
 
     <style>
         :root {
@@ -197,8 +197,11 @@
                 return;
             }
 
+            // A partir daqui o convite JÁ EXISTE no banco de dados —
+            // mesmo que o desenho do QR falhe por algum motivo (ex: a
+            // biblioteca não carregou), o código não pode se perder.
             sessionStorage.setItem("cappri_senha_equipe", senha);
-            mostrarQrCode(dados.token);
+            exibirConvite(dados.token);
 
         } catch (e) {
             erro.innerText = "Erro de conexão. Verifique a internet e tente de novo.";
@@ -208,22 +211,35 @@
         botao.innerText = "Gerar Convite";
     }
 
-    function mostrarQrCode(token) {
-        const link = `${URL_ROLETA}?token=${encodeURIComponent(token)}`;
-
-        const wrapper = document.getElementById("qrcode-wrapper");
-        wrapper.innerHTML = "";
-        const canvas = document.createElement("canvas");
-        wrapper.appendChild(canvas);
-        QRCode.toCanvas(canvas, link, {
-            width: 220,
-            margin: 1,
-            color: { dark: "#4A3B3E", light: "#FFFFFF" }
-        });
-
+    function exibirConvite(token) {
         document.getElementById("token-texto").innerText = token;
         document.getElementById("tela-senha").style.display = "none";
         document.getElementById("tela-qr").style.display = "block";
+
+        const wrapper = document.getElementById("qrcode-wrapper");
+        wrapper.innerHTML = "";
+
+        // O desenho do QR é tratado à parte: se falhar (ex: a
+        // biblioteca não carregou por algum motivo), a vendedora ainda
+        // consegue usar o código de texto abaixo normalmente.
+        try {
+            if (typeof QRCode === "undefined") {
+                throw new Error("Biblioteca de QR code não carregada.");
+            }
+            const link = `${URL_ROLETA}?token=${encodeURIComponent(token)}`;
+            const canvas = document.createElement("canvas");
+            wrapper.appendChild(canvas);
+            QRCode.toCanvas(canvas, link, {
+                width: 220,
+                margin: 1,
+                color: { dark: "#4A3B3E", light: "#FFFFFF" }
+            });
+        } catch (erroQr) {
+            wrapper.innerHTML =
+                '<p style="font-size:12px;color:#A83246;max-width:220px;">' +
+                "Não foi possível desenhar o QR agora — use o código abaixo com a cliente." +
+                "</p>";
+        }
     }
 
     function reiniciar() {
