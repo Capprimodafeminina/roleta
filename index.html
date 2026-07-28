@@ -11,6 +11,7 @@
     
     <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
     <script src="https://cdn.jsdelivr.net/gh/zarocknz/javascript-winwheel@2.8.0/Winwheel.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1/dist/confetti.browser.min.js"></script>
 
     <style>
         /* Variáveis de Cores Cappri */
@@ -298,11 +299,34 @@
         #etapa-1 { display: block; }
 
         .voucher-box {
+            position: relative;
             border: 2px dashed var(--cor-ouro);
             background-color: #FFFDF8;
             padding: 30px 20px;
             border-radius: 15px;
             margin-top: 20px;
+            animation: voucherAparece 0.5s ease;
+        }
+        @keyframes voucherAparece {
+            from { opacity: 0; transform: scale(0.92) translateY(10px); }
+            to { opacity: 1; transform: scale(1) translateY(0); }
+        }
+        .selo-voucher {
+            position: absolute;
+            top: -18px;
+            right: -14px;
+            width: 46px;
+            height: 46px;
+            border-radius: 50%;
+            background: radial-gradient(circle at 30% 30%, #FFF8D6, #D4AF37);
+            color: #4A3B3E;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 22px;
+            font-weight: 700;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.25);
+            border: 2px solid white;
         }
         .premio-texto {
             font-family: 'Playfair Display', serif;
@@ -310,6 +334,13 @@
             color: var(--cor-bordeaux);
             margin: 15px 0;
             font-weight: 700;
+        }
+        .validade-voucher {
+            font-size: 12px;
+            color: var(--cor-bordeaux);
+            font-weight: 600;
+            letter-spacing: 0.5px;
+            margin-top: -10px !important;
         }
     </style>
 </head>
@@ -379,9 +410,11 @@
 
         <div id="etapa-4" class="etapa">
             <div class="voucher-box">
+                <div class="selo-voucher">✓</div>
                 <h3 style="color: var(--cor-ouro); font-size: 20px; text-transform: uppercase; letter-spacing: 2px;">Voucher Liberado</h3>
                 <p>Apresente esta tela no caixa para retirar o seu presente.</p>
                 <div class="premio-texto" id="nome-premio-final"></div>
+                <p class="validade-voucher" id="validade-voucher"></p>
                 <p style="font-size: 12px; color: #999; margin-bottom: 0;">Válido apenas para compras aprovadas.</p>
             </div>
         </div>
@@ -394,10 +427,67 @@
     let cliquesRestantes = 3;
     let compartilhamentoEmAndamento = false;
 
+    // Quantos dias o voucher vale a partir do momento em que é gerado.
+    const DIAS_VALIDADE_VOUCHER = 15;
+
     // Mensagem enviada quando a cliente compartilha no WhatsApp.
     // É só uma frase — pode me pedir pra ajustar o tom quando quiser.
     const MENSAGEM_COMPARTILHAMENTO =
         "Acabei de descobrir a Roleta de Prêmios da Cappri! ✨ Comprando acima de R$200 você garante um giro e pode ganhar desde cupons até R$500 em roupas. Dá uma olhada no Instagram pra saber quando tem: instagram.com/uze.cappri 💫👗";
+
+    // --- Sons (gerados por código, sem precisar de arquivo de áudio) ---
+
+    let audioCtx = null;
+    function obterAudioContext() {
+        if (!audioCtx) {
+            const AudioContextClasse = window.AudioContext || window.webkitAudioContext;
+            if (!AudioContextClasse) return null;
+            audioCtx = new AudioContextClasse();
+        }
+        if (audioCtx.state === "suspended") {
+            audioCtx.resume();
+        }
+        return audioCtx;
+    }
+
+    function tocarTom(frequencia, inicio, duracao, volume) {
+        const ctx = obterAudioContext();
+        if (!ctx) return;
+        const osc = ctx.createOscillator();
+        const ganho = ctx.createGain();
+        osc.type = "sine";
+        osc.frequency.value = frequencia;
+        ganho.gain.setValueAtTime(0, ctx.currentTime + inicio);
+        ganho.gain.linearRampToValueAtTime(volume, ctx.currentTime + inicio + 0.02);
+        ganho.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + inicio + duracao);
+        osc.connect(ganho);
+        ganho.connect(ctx.destination);
+        osc.start(ctx.currentTime + inicio);
+        osc.stop(ctx.currentTime + inicio + duracao + 0.05);
+    }
+
+    function tocarSomGiro() {
+        const ctx = obterAudioContext();
+        if (!ctx) return;
+        const osc = ctx.createOscillator();
+        const ganho = ctx.createGain();
+        osc.type = "triangle";
+        osc.frequency.setValueAtTime(180, ctx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(420, ctx.currentTime + 1.2);
+        ganho.gain.setValueAtTime(0.001, ctx.currentTime);
+        ganho.gain.linearRampToValueAtTime(0.05, ctx.currentTime + 0.3);
+        ganho.gain.linearRampToValueAtTime(0.001, ctx.currentTime + 4.8);
+        osc.connect(ganho);
+        ganho.connect(ctx.destination);
+        osc.start();
+        osc.stop(ctx.currentTime + 5);
+    }
+
+    function tocarSomVitoria() {
+        tocarTom(523.25, 0, 0.25, 0.12);    // Dó5
+        tocarTom(659.25, 0.15, 0.25, 0.12); // Mi5
+        tocarTom(783.99, 0.3, 0.5, 0.14);   // Sol5
+    }
 
     // --- Utilitários de feedback visual (substituem os alert() nativos) ---
 
@@ -576,9 +666,9 @@ if (!roleta) {
                 {'fillStyle': '#E6C8C7', 'text': 'Cupom 20%', 'textFillStyle': '#4A3B3E'},
                 {'fillStyle': '#FDF5E6', 'text': 'Cupom 30%', 'textFillStyle': '#4A3B3E'},
                 {'fillStyle': '#4A3B3E', 'text': 'Look R$200', 'textFillStyle': '#FDF5E6'},
-                {'fillStyle': '#C89B9A', 'text': 'Sandália Suzanna', 'textFillStyle': '#4A3B3E'},
+                {'fillStyle': '#C89B9A', 'text': 'Sandália', 'textFillStyle': '#4A3B3E'},
                 // O Prêmio Máximo com cor Dourada Especial
-                {'fillStyle': '#D4AF37', 'text': 'R$ 500 em Compras', 'textFillStyle': '#ffffff'} 
+                {'fillStyle': '#D4AF37', 'text': 'R$ 500', 'textFillStyle': '#ffffff'} 
             ],
             'animation': {
                 'type': 'spinToStop',
@@ -657,6 +747,10 @@ function compartilharWpp() {
     }
 
     async function dispararSorteio() {
+        // Precisa ser chamado de forma síncrona, ainda dentro do clique do
+        // botão — é o que o navegador exige pra permitir tocar áudio.
+        obterAudioContext();
+
         const nome = document.getElementById("nome").value;
         const zap = document.getElementById("whatsapp").value;
         const token = document.getElementById("token").value;
@@ -694,6 +788,7 @@ function compartilharWpp() {
 
             let anguloParada = roleta.getRandomForSegment(segmentoAlvo);
             roleta.animation.stopAngle = anguloParada;
+            tocarSomGiro();
             roleta.startAnimation();
 
         } catch (erro) {
@@ -706,7 +801,26 @@ function compartilharWpp() {
     function mostrarResultado() {
         document.getElementById("roleta-container").style.display = "none";
         document.getElementById("nome-premio-final").innerText = premioGanho;
+
+        const dataValidade = new Date();
+        dataValidade.setDate(dataValidade.getDate() + DIAS_VALIDADE_VOUCHER);
+        const dataFormatada = dataValidade.toLocaleDateString("pt-BR");
+        document.getElementById("validade-voucher").innerText = `Válido até ${dataFormatada}`;
+
         document.getElementById("etapa-4").style.display = "block";
+
+        tocarSomVitoria();
+
+        if (typeof confetti === "function") {
+            confetti({
+                particleCount: 140,
+                spread: 80,
+                startVelocity: 42,
+                gravity: 0.9,
+                colors: ["#D4AF37", "#C89B9A", "#7A2A46", "#FFF8D6"],
+                origin: { y: 0.55 }
+            });
+        }
     }
 </script>
 
