@@ -525,15 +525,28 @@
         document.getElementById("etapa-2").style.display = "block";
 
 if (!roleta) {
-        // A roleta agora tem largura variável (responsiva). O <canvas>
-        // precisa desenhar numa resolução nítida de verdade, calculada
-        // a partir do tamanho real exibido x a densidade de pixels da
-        // tela (Retina/iPhone = 3x). Sem isso, em telas de alta
-        // densidade o anel dourado e os textos saem borrados/serrilhados.
+        // O anel dourado (wrapper) e a roleta (canvas) agora são
+        // calculados NO MESMO LUGAR, a partir do mesmo número — em vez
+        // de um vir do CSS (aspect-ratio/%) e o outro de uma leitura
+        // separada, os dois nascem da mesma conta, então nunca mais
+        // podem ficar dessincronizados.
+        const wrapper = document.getElementById('roleta-visual');
         const canvasRoleta = document.getElementById('canvasRoleta');
+        const espessuraAnel = 12; // mesma medida do padding original do anel
+
+        const larguraDisponivel = wrapper.parentElement.clientWidth;
+        const diametroAnel = Math.min(320, larguraDisponivel);
+        const diametroRoleta = diametroAnel - (espessuraAnel * 2);
+
+        wrapper.style.width = diametroAnel + "px";
+        wrapper.style.height = diametroAnel + "px";
+        canvasRoleta.style.width = diametroRoleta + "px";
+        canvasRoleta.style.height = diametroRoleta + "px";
+
+        // Resolução nítida em telas de alta densidade (Retina/iPhone),
+        // calculada a partir do tamanho real que acabamos de fixar.
         const dpr = window.devicePixelRatio || 1;
-        const tamanhoExibido = canvasRoleta.clientWidth || 320;
-        const resolucao = Math.round(tamanhoExibido * dpr);
+        const resolucao = Math.round(diametroRoleta * dpr);
         canvasRoleta.width = resolucao;
         canvasRoleta.height = resolucao;
 
