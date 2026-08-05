@@ -12,6 +12,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
     <script src="https://cdn.jsdelivr.net/gh/zarocknz/javascript-winwheel@2.8.0/Winwheel.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1/dist/confetti.browser.min.js"></script>
+    <script src="roleta-layout.js"></script>
 
     <style>
         /* Variáveis de Cores Cappri */
@@ -677,30 +678,34 @@
             if (!resposta.ok || !dados.valido) {
                 marcarErro("campo-token", true);
                 mostrarAviso(dados.mensagem || dados.detail || "Este convite não é válido.", "erro");
-                botaoAcessar.disabled = false;
-                botaoAcessar.innerText = textoOriginal;
                 return;
             }
 
             campanhaAtual = dados.campanha || "";
-            await carregarPremios();
+            const premios = await carregarPremios();
+
+            // O navegador só consegue calcular a largura da roleta depois que
+            // seu contêiner deixa de estar oculto (display: none).
+            document.getElementById("etapa-1").style.display = "none";
+            document.getElementById("roleta-container").style.display = "block";
+            document.getElementById("roleta-visual").classList.add("blur-effect");
+            document.getElementById("etapa-2").style.display = "block";
+
+            await CappriRoletaLayout.aguardarLayout();
+            montarRoleta(premios);
         } catch (erro) {
+            document.getElementById("etapa-1").style.display = "block";
+            document.getElementById("roleta-container").style.display = "none";
+            document.getElementById("roleta-visual").classList.remove("blur-effect");
+            document.getElementById("etapa-2").style.display = "none";
             mostrarAviso(
                 erro.message || "Erro de conexão. Verifique sua internet e tente novamente.",
                 "erro"
             );
+        } finally {
             botaoAcessar.disabled = false;
             botaoAcessar.innerText = textoOriginal;
-            return;
         }
-
-        botaoAcessar.disabled = false;
-        botaoAcessar.innerText = textoOriginal;
-
-        document.getElementById("etapa-1").style.display = "none";
-        document.getElementById("roleta-container").style.display = "block";
-        document.getElementById("roleta-visual").classList.add("blur-effect");
-        document.getElementById("etapa-2").style.display = "block";
     }
 
     async function carregarPremios() {
@@ -725,7 +730,7 @@
         }
 
         campanhaAtual = dados.campanha?.nome || campanhaAtual;
-        montarRoleta(premios);
+        return premios;
     }
 
     function montarRoleta(premios) {
@@ -738,11 +743,12 @@
         // podem ficar dessincronizados.
         const wrapper = document.getElementById('roleta-visual');
         const canvasRoleta = document.getElementById('canvasRoleta');
-        const espessuraAnel = 12; // mesma medida do padding original do anel
-
-        const larguraDisponivel = wrapper.parentElement.clientWidth;
-        const diametroAnel = Math.min(320, larguraDisponivel);
-        const diametroRoleta = diametroAnel - (espessuraAnel * 2);
+        const larguraDisponivel = wrapper.parentElement.getBoundingClientRect().width;
+        const dimensoes = CappriRoletaLayout.calcularDimensoesRoleta(
+            larguraDisponivel,
+            window.devicePixelRatio
+        );
+        const { diametroAnel, diametroRoleta, resolucao, escala, outerRadius } = dimensoes;
 
         wrapper.style.width = diametroAnel + "px";
         wrapper.style.height = diametroAnel + "px";
@@ -751,15 +757,12 @@
 
         // Resolução nítida em telas de alta densidade (Retina/iPhone),
         // calculada a partir do tamanho real que acabamos de fixar.
-        const dpr = window.devicePixelRatio || 1;
-        const resolucao = Math.round(diametroRoleta * dpr);
         canvasRoleta.width = resolucao;
         canvasRoleta.height = resolucao;
 
         // 350 foi o tamanho de referência usado no desenho original —
         // escalamos as demais medidas (fonte, margem, espessura da
         // linha) na mesma proporção da nova resolução.
-        const escala = resolucao / 350;
         const paleta = [
             { fundo: '#FDF5E6', texto: '#4A3B3E' },
             { fundo: '#4A3B3E', texto: '#FDF5E6' },
@@ -780,7 +783,7 @@
         roleta = new Winwheel({
             'canvasId': 'canvasRoleta',
             'numSegments': segmentos.length,
-            'outerRadius': resolucao / 2,
+            'outerRadius': outerRadius,
             'textFontSize': Math.max(9, Math.min(14, 140 / segmentos.length)) * escala,
             'textFontFamily': 'Montserrat',
             'textMargin': 15 * escala,
