@@ -112,3 +112,38 @@ test("mantém válida a sintaxe dos scripts da funcionária e da administração
         }
     }
 });
+
+test("separa ciência de privacidade da autorização opcional de aniversário", () => {
+    const html = fs.readFileSync(path.join(__dirname, "..", "index.html"), "utf8");
+
+    assert.match(html, /id="ciencia-privacidade"/);
+    assert.match(html, /id="data-nascimento"[^>]*autocomplete="bday"/);
+    assert.match(html, /id="consentimento-aniversario"/);
+    assert.match(html, /href="privacidade\.html"/);
+    assert.match(html, /ciencia_privacidade:/);
+    assert.match(html, /data_nascimento:/);
+    assert.match(html, /consentimento_aniversario:/);
+    assert.doesNotMatch(html, /id="consentimento"/);
+});
+
+test("publica aviso de privacidade com identificação e canal da empresa", () => {
+    const html = fs.readFileSync(path.join(__dirname, "..", "privacidade.html"), "utf8");
+
+    assert.match(html, /Uze Cappri Ltda/);
+    assert.match(html, /66\.278\.427\/0001-64/);
+    assert.match(html, /uzecappri@gmail\.com/);
+    assert.match(html, /5577992081605/);
+    assert.match(html, /Versão 1\.0/);
+    assert.match(html, /18 anos ou mais/);
+    assert.match(html, /revogar/i);
+});
+
+test("administração mostra aniversários e permite revogar a autorização", () => {
+    const html = fs.readFileSync(path.join(__dirname, "..", "admin.html"), "utf8");
+
+    assert.match(html, /<th>Aniversário<\/th>/);
+    assert.match(html, /p\.data_nascimento/);
+    assert.match(html, /data-revoke-birthday/);
+    assert.match(html, /revogar-aniversario/);
+    assert.match(html, /politica_privacidade_versao/);
+});
