@@ -388,7 +388,7 @@
 
             <label class="consentimento" id="campo-consentimento">
                 <input type="checkbox" id="consentimento">
-                <span>Aceito receber contato da Cappri via WhatsApp sobre este sorteio.</span>
+                <span id="texto-consentimento">Aceito receber contato da Cappri via WhatsApp sobre este sorteio.</span>
             </label>
             
             <button class="btn-primario" onclick="avancarParaWhatsapp()">Acessar Roleta</button>
@@ -730,6 +730,10 @@
         }
 
         campanhaAtual = dados.campanha?.nome || campanhaAtual;
+        if (dados.campanha?.texto_consentimento) {
+            document.getElementById("texto-consentimento").textContent =
+                dados.campanha.texto_consentimento;
+        }
         return premios;
     }
 
