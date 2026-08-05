@@ -52,6 +52,18 @@ test("exibe o contêiner antes de medir e montar a roleta", () => {
     assert.ok(montar > aguardar, "a roleta precisa ser montada depois do layout");
 });
 
+test("libera a confirmação de compartilhamento também no computador", () => {
+    const html = fs.readFileSync(path.join(__dirname, "..", "index.html"), "utf8");
+    const inicio = html.indexOf("function compartilharWpp()");
+    const fim = html.indexOf("function registrarCompartilhamentoValido()", inicio);
+    const funcao = html.slice(inicio, fim);
+
+    assert.match(html, /id="botao-confirmar-compartilhamento"/);
+    assert.match(funcao, /window\.open\(linkWeb/);
+    assert.match(funcao, /botaoConfirmar\.hidden = false/);
+    assert.doesNotMatch(funcao, /visibilitychange/);
+});
+
 test("mantém válida a sintaxe do JavaScript embutido na página", () => {
     const html = fs.readFileSync(path.join(__dirname, "..", "index.html"), "utf8");
     const scriptsSemSrc = [
