@@ -133,6 +133,8 @@
             border: 1px solid transparent;
             border-radius: 11px;
             font-weight: 700;
+            cursor: pointer;
+            text-decoration: none;
             transition: transform .16s, background .16s, border-color .16s;
         }
         .btn:hover:not(:disabled) { transform: translateY(-1px); }
@@ -436,7 +438,7 @@
                 <section class="page active" id="page-overview">
                     <div class="page-header">
                         <div><h1>Visão geral</h1><p>O essencial da campanha, atualizado diretamente do banco.</p></div>
-                        <div class="header-actions"><button class="btn btn-primary" data-action="generate-invite">＋ Gerar convite</button></div>
+                        <div class="header-actions"><a class="btn btn-primary" href="caixa.html">＋ Gerar convite</a></div>
                     </div>
                     <div id="campaign-banner"></div>
                     <div class="metrics-grid" id="metrics-grid"></div>
@@ -482,7 +484,7 @@
                 <section class="page" id="page-invites">
                     <div class="page-header">
                         <div><h1>Convites</h1><p>Acompanhe os acessos e invalide convites enviados por engano.</p></div>
-                        <div class="header-actions"><button class="btn btn-primary" data-action="generate-invite">＋ Gerar convite</button></div>
+                        <div class="header-actions"><a class="btn btn-primary" href="caixa.html">＋ Gerar convite</a></div>
                     </div>
                     <div class="toolbar"><div class="filters">
                         <div class="search-box"><input id="invite-search" type="search" placeholder="Buscar pelo código do convite"></div>
@@ -896,19 +898,6 @@
             el("modal-submit").className = "btn btn-danger";
         }
 
-        async function generateInvite() {
-            setLoading(true);
-            try {
-                const { data } = await api("/admin/convites", { method: "POST" });
-                const link = `${ROLETA_URL}?token=${encodeURIComponent(data.token)}`;
-                await loadPanel(state.painel.campanha.id, true);
-                openModal("Convite gerado", `<div class="settings-note" style="margin-bottom:16px">Campanha: <strong>${escapeHtml(data.campanha)}</strong></div><div class="field"><label>Link da cliente</label><input id="generated-link" readonly value="${escapeHtml(link)}"></div><p class="field-help">Envie este link ou use a tela da funcionária para apresentar o QR Code.</p>`, "Copiar link", async () => {
-                    await copyText(link); closeModal(); toast("Link copiado.");
-                });
-            } catch (error) { toast(error.message, "error"); }
-            finally { setLoading(false); }
-        }
-
         async function copyText(text) {
             try { await navigator.clipboard.writeText(text); }
             catch { const input = document.createElement("textarea"); input.value = text; document.body.appendChild(input); input.select(); document.execCommand("copy"); input.remove(); }
@@ -966,8 +955,6 @@
             if (pageButton) goToPage(pageButton.dataset.page);
             const goButton = event.target.closest("[data-go]");
             if (goButton) goToPage(goButton.dataset.go);
-            if (event.target.closest('[data-action="generate-invite"]')) generateInvite();
-
             const editPrize = event.target.closest("[data-edit-prize]");
             if (editPrize) prizeModal((state.painel.premios || []).find(p => p.id === Number(editPrize.dataset.editPrize)));
 

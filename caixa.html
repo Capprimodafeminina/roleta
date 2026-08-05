@@ -111,6 +111,37 @@
             color: #aaa;
             margin: 0 0 20px 0;
         }
+        .compartilhar-convite {
+            margin-top: 22px;
+            padding-top: 20px;
+            border-top: 1px solid #eee;
+            text-align: left;
+        }
+        .compartilhar-convite label {
+            display: block;
+            margin-bottom: 7px;
+            color: var(--cor-texto);
+            font-size: 12px;
+            font-weight: 600;
+        }
+        .compartilhar-convite input {
+            margin: 0;
+            padding: 12px;
+            background: #FAFAFA;
+            color: var(--cor-texto);
+            font-size: 12px;
+            text-overflow: ellipsis;
+        }
+        .compartilhar-convite button {
+            margin-top: 10px;
+        }
+        .retorno-copia {
+            min-height: 16px;
+            margin: 7px 0 0;
+            color: #5F7752;
+            font-size: 11px;
+            text-align: center;
+        }
         .aviso-erro {
             color: #A83246;
             font-size: 12px;
@@ -147,6 +178,12 @@
         <div class="token-texto" id="token-texto"></div>
         <p class="legenda-token">Código de reserva, caso o QR não funcione</p>
         <p class="legenda-token" id="nome-campanha"></p>
+        <div class="compartilhar-convite">
+            <label for="link-cliente">Link da cliente</label>
+            <input id="link-cliente" type="text" readonly aria-describedby="retorno-copia">
+            <button class="secundario" id="botao-copiar-link" type="button" onclick="copiarLinkCliente()">Copiar Link</button>
+            <p class="retorno-copia" id="retorno-copia" role="status" aria-live="polite"></p>
+        </div>
         <button onclick="reiniciar()">Gerar Novo Convite</button>
     </div>
 
@@ -158,6 +195,7 @@
     // Ajuste esses dois links se o domínio do backend ou da roleta mudar.
     const URL_API = "https://cappri.onrender.com";
     const URL_ROLETA = "https://capprimodafeminina.github.io/roleta/";
+    let linkClienteAtual = "";
 
     // Lembra a senha dentro da mesma aba/sessão do navegador, pra
     // vendedora não precisar redigitar a cada cliente — some sozinha
@@ -223,7 +261,10 @@
     }
 
     function exibirConvite(token, campanha) {
+        linkClienteAtual = `${URL_ROLETA}?token=${encodeURIComponent(token)}`;
         document.getElementById("token-texto").innerText = token;
+        document.getElementById("link-cliente").value = linkClienteAtual;
+        document.getElementById("retorno-copia").innerText = "";
         document.getElementById("nome-campanha").innerText = campanha
             ? `Campanha: ${campanha}`
             : "";
@@ -240,10 +281,9 @@
             if (typeof QRCode === "undefined") {
                 throw new Error("Biblioteca de QR code não carregada.");
             }
-            const link = `${URL_ROLETA}?token=${encodeURIComponent(token)}`;
             const canvas = document.createElement("canvas");
             wrapper.appendChild(canvas);
-            QRCode.toCanvas(canvas, link, {
+            QRCode.toCanvas(canvas, linkClienteAtual, {
                 width: 220,
                 margin: 1,
                 color: { dark: "#4A3B3E", light: "#FFFFFF" }
@@ -256,9 +296,43 @@
         }
     }
 
+    async function copiarLinkCliente() {
+        if (!linkClienteAtual) return;
+
+        const retorno = document.getElementById("retorno-copia");
+        const botao = document.getElementById("botao-copiar-link");
+
+        try {
+            if (navigator.clipboard && window.isSecureContext) {
+                await navigator.clipboard.writeText(linkClienteAtual);
+            } else {
+                const campoTemporario = document.createElement("textarea");
+                campoTemporario.value = linkClienteAtual;
+                campoTemporario.setAttribute("readonly", "");
+                campoTemporario.style.position = "fixed";
+                campoTemporario.style.opacity = "0";
+                document.body.appendChild(campoTemporario);
+                campoTemporario.select();
+                const copiado = document.execCommand("copy");
+                campoTemporario.remove();
+                if (!copiado) throw new Error("Cópia não autorizada pelo navegador.");
+            }
+
+            retorno.innerText = "Link copiado! Agora é só colar na conversa com a cliente.";
+            botao.innerText = "Link Copiado";
+            window.setTimeout(() => { botao.innerText = "Copiar Link"; }, 2200);
+        } catch (erroCopia) {
+            document.getElementById("link-cliente").focus();
+            document.getElementById("link-cliente").select();
+            retorno.innerText = "Não foi possível copiar automaticamente. O link foi selecionado para você copiar.";
+        }
+    }
+
     function reiniciar() {
         document.getElementById("tela-qr").style.display = "none";
         document.getElementById("tela-senha").style.display = "block";
+        document.getElementById("retorno-copia").innerText = "";
+        linkClienteAtual = "";
     }
 </script>
 
