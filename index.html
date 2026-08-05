@@ -147,6 +147,35 @@
         .consentimento.erro span {
             color: #A83246;
         }
+        .aviso-privacidade {
+            padding: 12px 14px;
+            margin: 4px 0 16px;
+            border: 1px solid #eadde0;
+            border-radius: 12px;
+            background: #fcf8f8;
+            color: #675a5e;
+            font-size: 11px;
+            line-height: 1.55;
+            text-align: left;
+        }
+        .aviso-privacidade a,
+        .link-privacidade {
+            color: var(--cor-bordeaux);
+            font-weight: 600;
+            text-decoration: underline;
+            text-underline-offset: 2px;
+        }
+        .opcional {
+            display: block;
+            margin-top: 4px;
+            color: #9b8d91;
+            font-size: 10px;
+            line-height: 1.45;
+        }
+        .rodape-formulario {
+            margin: 14px 0 0;
+            font-size: 11px;
+        }
 
         .aviso-flutuante {
             position: fixed;
@@ -383,18 +412,36 @@
                 <span class="mensagem-erro">WhatsApp inválido. Use (DD) 9XXXX-XXXX.</span>
             </div>
 
+            <div class="campo-flutuante" id="campo-data-nascimento">
+                <input type="date" id="data-nascimento" placeholder=" " autocomplete="bday">
+                <label for="data-nascimento">Data de nascimento (opcional)</label>
+                <span class="opcional">Informe somente se quiser receber uma mensagem de aniversário. Disponível para maiores de 18 anos.</span>
+                <span class="mensagem-erro">Confira a data e a autorização de aniversário.</span>
+            </div>
+
             <div class="campo-flutuante" id="campo-token">
                 <input type="text" id="token" placeholder=" " required>
                 <label for="token">Código de Autorização</label>
                 <span class="mensagem-erro">Verifique o código informado.</span>
             </div>
 
-            <label class="consentimento" id="campo-consentimento">
-                <input type="checkbox" id="consentimento">
-                <span id="texto-consentimento">Aceito receber contato da Cappri via WhatsApp sobre este sorteio.</span>
+            <div class="aviso-privacidade">
+                Usaremos seu nome, WhatsApp e os dados da participação para validar o convite, realizar o sorteio, registrar e entregar o prêmio.
+                <a href="privacidade.html" target="_blank" rel="noopener">Leia o Aviso de Privacidade completo.</a>
+            </div>
+
+            <label class="consentimento" id="campo-ciencia-privacidade">
+                <input type="checkbox" id="ciencia-privacidade">
+                <span><span id="texto-ciencia-privacidade">Li o Aviso de Privacidade e estou ciente de como meus dados serão utilizados nesta campanha.</span> <strong>(obrigatório)</strong></span>
             </label>
-            
+
+            <label class="consentimento" id="campo-consentimento-aniversario">
+                <input type="checkbox" id="consentimento-aniversario">
+                <span>Quero receber uma mensagem de aniversário da Cappri pelo WhatsApp. Posso cancelar quando quiser. <strong>(opcional)</strong></span>
+            </label>
+
             <button class="btn-primario" onclick="avancarParaWhatsapp()">Acessar Roleta</button>
+            <p class="rodape-formulario"><a class="link-privacidade" href="privacidade.html" target="_blank" rel="noopener">Privacidade e seus direitos</a></p>
         </div>
 
         <div id="roleta-container">
@@ -605,8 +652,9 @@
     }
 
     function limparErros() {
-        ["campo-nome", "campo-whatsapp", "campo-token"].forEach(id => marcarErro(id, false));
-        document.getElementById("campo-consentimento").classList.remove("erro");
+        ["campo-nome", "campo-whatsapp", "campo-token", "campo-data-nascimento"].forEach(id => marcarErro(id, false));
+        document.getElementById("campo-ciencia-privacidade").classList.remove("erro");
+        document.getElementById("campo-consentimento-aniversario").classList.remove("erro");
     }
 
     // --- Máscara do WhatsApp enquanto digita: (DD) 9XXXX-XXXX ---
@@ -632,13 +680,26 @@
         e.target.value = aplicarMascaraWhatsapp(e.target.value);
     });
 
+    function dataLimiteMaioridade() {
+        const hoje = new Date();
+        const limite = new Date(hoje.getFullYear() - 18, hoje.getMonth(), hoje.getDate());
+        const ano = limite.getFullYear();
+        const mes = String(limite.getMonth() + 1).padStart(2, "0");
+        const dia = String(limite.getDate()).padStart(2, "0");
+        return `${ano}-${mes}-${dia}`;
+    }
+
+    document.getElementById("data-nascimento").max = dataLimiteMaioridade();
+
     async function avancarParaWhatsapp() {
         limparErros();
 
         const nome = document.getElementById("nome").value.trim();
         const zap = document.getElementById("whatsapp").value;
         const token = document.getElementById("token").value.trim();
-        const consentimentoMarcado = document.getElementById("consentimento").checked;
+        const cienciaPrivacidade = document.getElementById("ciencia-privacidade").checked;
+        const dataNascimento = document.getElementById("data-nascimento").value;
+        const consentimentoAniversario = document.getElementById("consentimento-aniversario").checked;
 
         let temErro = false;
 
@@ -663,9 +724,29 @@
             return;
         }
 
-        if (!consentimentoMarcado) {
-            document.getElementById("campo-consentimento").classList.add("erro");
-            mostrarAviso("Você precisa aceitar para continuar.", "erro");
+        if (!cienciaPrivacidade) {
+            document.getElementById("campo-ciencia-privacidade").classList.add("erro");
+            mostrarAviso("Confirme que leu o Aviso de Privacidade para continuar.", "erro");
+            return;
+        }
+
+        if (consentimentoAniversario && !dataNascimento) {
+            marcarErro("campo-data-nascimento", true);
+            document.getElementById("campo-consentimento-aniversario").classList.add("erro");
+            mostrarAviso("Informe sua data de nascimento para autorizar a mensagem de aniversário.", "erro");
+            return;
+        }
+
+        if (dataNascimento && !consentimentoAniversario) {
+            marcarErro("campo-data-nascimento", true);
+            document.getElementById("campo-consentimento-aniversario").classList.add("erro");
+            mostrarAviso("Marque a autorização de aniversário ou apague a data informada.", "erro");
+            return;
+        }
+
+        if (dataNascimento && dataNascimento > dataLimiteMaioridade()) {
+            marcarErro("campo-data-nascimento", true);
+            mostrarAviso("O cadastro de aniversário está disponível apenas para maiores de 18 anos.", "erro");
             return;
         }
 
@@ -734,7 +815,7 @@
 
         campanhaAtual = dados.campanha?.nome || campanhaAtual;
         if (dados.campanha?.texto_consentimento) {
-            document.getElementById("texto-consentimento").textContent =
+            document.getElementById("texto-ciencia-privacidade").textContent =
                 dados.campanha.texto_consentimento;
         }
         return premios;
@@ -851,7 +932,9 @@
                 body: JSON.stringify({
                     nome: nome,
                     whatsapp: zap,
-                    consentimento: document.getElementById("consentimento").checked
+                    ciencia_privacidade: document.getElementById("ciencia-privacidade").checked,
+                    data_nascimento: document.getElementById("data-nascimento").value || null,
+                    consentimento_aniversario: document.getElementById("consentimento-aniversario").checked
                 })
             });
             const dados = await resposta.json();
