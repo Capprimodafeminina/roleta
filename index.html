@@ -436,10 +436,12 @@
 </div>
 
 <script>
+    const URL_API = "https://cappri.onrender.com";
     let roleta;
     let premioGanho = "";
     let codigoVoucher = "";
     let compartilhamentoEmAndamento = false;
+    let campanhaAtual = "";
 
     // Se o link veio de um QR code gerado no caixa, o código já chega
     // pronto na URL (?token=...) — preenche sozinho, sem a cliente
@@ -669,7 +671,7 @@
         botaoAcessar.innerText = "Verificando...";
 
         try {
-            const resposta = await fetch(`https://cappri.onrender.com/verificar-token/${token}`);
+            const resposta = await fetch(`${URL_API}/verificar-token/${token}`);
             const dados = await resposta.json();
 
             if (!resposta.ok || !dados.valido) {
@@ -679,8 +681,14 @@
                 botaoAcessar.innerText = textoOriginal;
                 return;
             }
+
+            campanhaAtual = dados.campanha || "";
+            await carregarPremios();
         } catch (erro) {
-            mostrarAviso("Erro de conexão. Verifique sua internet e tente novamente.", "erro");
+            mostrarAviso(
+                erro.message || "Erro de conexão. Verifique sua internet e tente novamente.",
+                "erro"
+            );
             botaoAcessar.disabled = false;
             botaoAcessar.innerText = textoOriginal;
             return;
@@ -693,8 +701,36 @@
         document.getElementById("roleta-container").style.display = "block";
         document.getElementById("roleta-visual").classList.add("blur-effect");
         document.getElementById("etapa-2").style.display = "block";
+    }
 
-if (!roleta) {
+    async function carregarPremios() {
+        const resposta = await fetch(`${URL_API}/premios`);
+        const dados = await resposta.json();
+
+        if (!resposta.ok) {
+            throw new Error(dados.detail || "Não foi possível carregar os prêmios.");
+        }
+        if (!Array.isArray(dados.dados) || dados.dados.length < 2) {
+            throw new Error("A campanha precisa ter pelo menos dois prêmios na roleta.");
+        }
+
+        const premios = [...dados.dados].sort(
+            (a, b) => a.posicao_roleta - b.posicao_roleta
+        );
+        const posicoesValidas = premios.every(
+            (premio, indice) => premio.posicao_roleta === indice + 1
+        );
+        if (!posicoesValidas) {
+            throw new Error("As posições dos prêmios da campanha precisam ser contínuas.");
+        }
+
+        campanhaAtual = dados.campanha?.nome || campanhaAtual;
+        montarRoleta(premios);
+    }
+
+    function montarRoleta(premios) {
+        if (roleta) return;
+
         // O anel dourado (wrapper) e a roleta (canvas) agora são
         // calculados NO MESMO LUGAR, a partir do mesmo número — em vez
         // de um vir do CSS (aspect-ratio/%) e o outro de uma leitura
@@ -724,32 +760,33 @@ if (!roleta) {
         // escalamos as demais medidas (fonte, margem, espessura da
         // linha) na mesma proporção da nova resolução.
         const escala = resolucao / 350;
+        const paleta = [
+            { fundo: '#FDF5E6', texto: '#4A3B3E' },
+            { fundo: '#4A3B3E', texto: '#FDF5E6' },
+            { fundo: '#C89B9A', texto: '#4A3B3E' },
+            { fundo: '#E6C8C7', texto: '#4A3B3E' }
+        ];
+        const segmentos = premios.map((premio, indice) => {
+            const cores = indice === premios.length - 1
+                ? { fundo: '#D4AF37', texto: '#FFFFFF' }
+                : paleta[indice % paleta.length];
+            return {
+                fillStyle: cores.fundo,
+                text: premio.nome,
+                textFillStyle: cores.texto
+            };
+        });
 
         roleta = new Winwheel({
             'canvasId': 'canvasRoleta',
-            'numSegments': 12, // Agora são 12 fatias!
+            'numSegments': segmentos.length,
             'outerRadius': resolucao / 2,
-            'textFontSize': 11 * escala, // Fonte menor para caber nomes longos
+            'textFontSize': Math.max(9, Math.min(14, 140 / segmentos.length)) * escala,
             'textFontFamily': 'Montserrat',
             'textMargin': 15 * escala,
             'lineWidth': 1.5 * escala,
             'strokeStyle': '#D4AF37', 
-            'segments': [
-                // Usando a paleta de luxo intercalada
-                {'fillStyle': '#FDF5E6', 'text': 'Óculos', 'textFillStyle': '#4A3B3E'},
-                {'fillStyle': '#4A3B3E', 'text': 'Anel', 'textFillStyle': '#FDF5E6'},
-                {'fillStyle': '#C89B9A', 'text': 'Bracelete', 'textFillStyle': '#4A3B3E'},
-                {'fillStyle': '#E6C8C7', 'text': 'Brinco', 'textFillStyle': '#4A3B3E'},
-                {'fillStyle': '#FDF5E6', 'text': 'Taça da Loja', 'textFillStyle': '#4A3B3E'},
-                {'fillStyle': '#4A3B3E', 'text': 'Cupom 10%', 'textFillStyle': '#FDF5E6'},
-                {'fillStyle': '#C89B9A', 'text': 'Cupom 15%', 'textFillStyle': '#4A3B3E'},
-                {'fillStyle': '#E6C8C7', 'text': 'Cupom 20%', 'textFillStyle': '#4A3B3E'},
-                {'fillStyle': '#FDF5E6', 'text': 'Cupom 30%', 'textFillStyle': '#4A3B3E'},
-                {'fillStyle': '#4A3B3E', 'text': 'Look R$200', 'textFillStyle': '#FDF5E6'},
-                {'fillStyle': '#C89B9A', 'text': 'Sandália', 'textFillStyle': '#4A3B3E'},
-                // O Prêmio Máximo com cor Dourada Especial
-                {'fillStyle': '#D4AF37', 'text': 'R$ 500', 'textFillStyle': '#ffffff'} 
-            ],
+            'segments': segmentos,
             'animation': {
                 'type': 'spinToStop',
                 'duration': 5,
@@ -757,7 +794,6 @@ if (!roleta) {
                 'callbackFinished': mostrarResultado
             }
         });
-    }
     }
 function compartilharWpp() {
         if (compartilhamentoEmAndamento) return;
@@ -833,11 +869,15 @@ function compartilharWpp() {
         document.getElementById("botao-girar-real").innerText = "Sorteando...";
 
         try {
-            const url_api = `https://cappri.onrender.com/sortear/${token}`;
+            const url_api = `${URL_API}/sortear/${token}`;
             const resposta = await fetch(url_api, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ nome: nome, whatsapp: zap })
+                body: JSON.stringify({
+                    nome: nome,
+                    whatsapp: zap,
+                    consentimento: document.getElementById("consentimento").checked
+                })
             });
             const dados = await resposta.json();
 

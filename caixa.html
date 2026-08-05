@@ -138,6 +138,7 @@
         <div id="qrcode-wrapper"></div>
         <div class="token-texto" id="token-texto"></div>
         <p class="legenda-token">Código de reserva, caso o QR não funcione</p>
+        <p class="legenda-token" id="nome-campanha"></p>
         <button onclick="reiniciar()">Gerar Novo Convite</button>
     </div>
 
@@ -201,7 +202,7 @@
             // mesmo que o desenho do QR falhe por algum motivo (ex: a
             // biblioteca não carregou), o código não pode se perder.
             sessionStorage.setItem("cappri_senha_equipe", senha);
-            exibirConvite(dados.token);
+            exibirConvite(dados.token, dados.campanha);
 
         } catch (e) {
             erro.innerText = "Erro de conexão. Verifique a internet e tente de novo.";
@@ -211,8 +212,11 @@
         botao.innerText = "Gerar Convite";
     }
 
-    function exibirConvite(token) {
+    function exibirConvite(token, campanha) {
         document.getElementById("token-texto").innerText = token;
+        document.getElementById("nome-campanha").innerText = campanha
+            ? `Campanha: ${campanha}`
+            : "";
         document.getElementById("tela-senha").style.display = "none";
         document.getElementById("tela-qr").style.display = "block";
 
