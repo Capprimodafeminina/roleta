@@ -416,7 +416,7 @@
                 <button class="nav-btn" data-page="campaign"><span class="nav-icon">⚙</span>Configurar campanha</button>
                 <button class="nav-btn" data-page="audit"><span class="nav-icon">↻</span>Histórico</button>
             </nav>
-            <div class="sidebar-foot">Sessão protegida e temporária.<br>Dados sensíveis não ficam em cache.</div>
+            <div class="sidebar-foot">Sessão protegida e temporária.<br>Dados sensíveis não ficam em cache.<br><a href="privacidade.html" target="_blank" rel="noopener" style="color:#ecd49c">Aviso de Privacidade</a></div>
         </aside>
 
         <main class="main">
@@ -468,7 +468,7 @@
 
                 <section class="page" id="page-participants">
                     <div class="page-header">
-                        <div><h1>Participantes</h1><p>Consulte clientes, vouchers e confirme a entrega dos prêmios.</p></div>
+                        <div><h1>Participantes</h1><p>Consulte clientes, aniversários autorizados, vouchers e entrega dos prêmios.</p></div>
                         <div class="header-actions"><button class="btn btn-secondary" id="export-button">↓ Exportar CSV</button></div>
                     </div>
                     <div class="toolbar"><div class="filters">
@@ -476,7 +476,7 @@
                         <select class="filter-select" id="participant-status"><option value="all">Todos os resgates</option><option value="pending">Aguardando resgate</option><option value="redeemed">Resgatados</option></select>
                     </div></div>
                     <div class="table-card"><div class="table-scroll"><table>
-                        <thead><tr><th>Cliente</th><th>WhatsApp</th><th>Prêmio</th><th>Voucher</th><th>Participação</th><th>Resgate</th><th></th></tr></thead>
+                        <thead><tr><th>Cliente</th><th>WhatsApp</th><th>Aniversário</th><th>Prêmio</th><th>Voucher</th><th>Participação</th><th>Resgate</th><th></th></tr></thead>
                         <tbody id="participants-table"></tbody>
                     </table></div><div class="table-foot" id="participants-foot"></div></div>
                 </section>
@@ -498,7 +498,7 @@
 
                 <section class="page" id="page-campaign">
                     <div class="page-header">
-                        <div><h1>Configurar campanha</h1><p>Edite o período, o consentimento e o estado operacional.</p></div>
+                        <div><h1>Configurar campanha</h1><p>Edite o período, o aviso de privacidade e o estado operacional.</p></div>
                         <div class="header-actions"><button class="btn btn-secondary" id="new-campaign-button">＋ Nova campanha</button><button class="btn btn-primary" id="save-campaign-button">Salvar alterações</button></div>
                     </div>
                     <article class="card"><div class="card-body">
@@ -506,7 +506,8 @@
                             <div class="field span-2"><label for="campaign-name">Nome oficial</label><input id="campaign-name" maxlength="100" required></div>
                             <div class="field"><label for="campaign-start">Início</label><input id="campaign-start" type="datetime-local"></div>
                             <div class="field"><label for="campaign-end">Encerramento</label><input id="campaign-end" type="datetime-local"></div>
-                            <div class="field span-2"><label for="campaign-consent">Texto de consentimento exibido à cliente</label><textarea id="campaign-consent" maxlength="500" required></textarea><span class="field-help">Esse texto aparecerá ao lado da caixa que a cliente precisa marcar antes de participar.</span></div>
+                            <div class="field span-2"><label for="campaign-consent">Texto de ciência do Aviso de Privacidade</label><textarea id="campaign-consent" maxlength="500" required></textarea><span class="field-help">A cliente precisa confirmar esse texto para participar. A autorização de aniversário é exibida separadamente e permanece opcional.</span></div>
+                            <div class="settings-note"><strong>Versão do aviso:</strong> <span id="campaign-privacy-version">1.0</span> · <a href="privacidade.html" target="_blank" rel="noopener">Abrir aviso publicado</a></div>
                             <div class="field"><label for="campaign-status">Status</label><select id="campaign-status"><option value="rascunho">Rascunho</option><option value="ativa">Ativa</option><option value="encerrada">Encerrada</option><option value="cancelada">Cancelada</option></select></div>
                             <div class="settings-note"><strong>Atenção:</strong> só pode existir uma campanha ativa. Antes de ativar outra, encerre a atual e confira se a nova possui ao menos dois prêmios ativos.</div>
                         </form>
@@ -585,6 +586,12 @@
             if (digits.length === 11) return `(${digits.slice(0,2)}) ${digits.slice(2,7)}-${digits.slice(7)}`;
             if (digits.length === 10) return `(${digits.slice(0,2)}) ${digits.slice(2,6)}-${digits.slice(6)}`;
             return value || "—";
+        }
+
+        function formatBirthDate(value) {
+            if (!value) return "—";
+            const parts = String(value).slice(0, 10).split("-");
+            return parts.length === 3 ? `${parts[2]}/${parts[1]}/${parts[0]}` : escapeHtml(value);
         }
 
         function initials(name) {
@@ -741,7 +748,7 @@
             const query = normalize(el("participant-search").value);
             const status = el("participant-status").value;
             return (state.painel.participantes || []).filter(p => {
-                const haystack = normalize([p.nome, p.whatsapp, p.premio, p.codigo_voucher].join(" "));
+                const haystack = normalize([p.nome, p.whatsapp, p.data_nascimento, p.premio, p.codigo_voucher].join(" "));
                 const matchesQuery = !query || haystack.includes(query);
                 const matchesStatus = status === "all" || (status === "redeemed" ? !!p.resgatado_em : !p.resgatado_em);
                 return matchesQuery && matchesStatus;
@@ -751,14 +758,19 @@
         function renderParticipants() {
             const participants = filteredParticipants();
             el("participants-table").innerHTML = participants.length ? participants.map(p => `<tr>
-                <td><span class="cell-main">${escapeHtml(p.nome)}</span><span class="cell-sub">Consentiu em ${formatDate(p.consentimento_em)}</span></td>
+                <td><span class="cell-main">${escapeHtml(p.nome)}</span><span class="cell-sub">Ciente do aviso em ${formatDate(p.consentimento_em)} · versão ${escapeHtml(p.politica_privacidade_versao || "—")}</span></td>
                 <td>${escapeHtml(formatPhone(p.whatsapp))}</td>
+                <td>${p.data_nascimento && !p.consentimento_aniversario_revogado_em
+                    ? `<span class="cell-main">${formatBirthDate(p.data_nascimento)}</span><span class="cell-sub">Autorizado em ${formatDate(p.consentimento_aniversario_em)}</span>`
+                    : p.consentimento_aniversario_revogado_em
+                        ? `${badge("Revogado", "badge-gray")}<span class="cell-sub">${formatDate(p.consentimento_aniversario_revogado_em)}</span>`
+                        : badge("Não autorizado", "badge-gray")}</td>
                 <td><span class="cell-main">${escapeHtml(p.premio)}</span></td>
                 <td><span class="cell-code">${escapeHtml(p.codigo_voucher)}</span></td>
                 <td>${formatDate(p.data_participacao)}</td>
                 <td>${p.resgatado_em ? `${badge("Resgatado", "badge-green")}<span class="cell-sub">${formatDate(p.resgatado_em)}</span>` : badge("Pendente", "badge-yellow")}</td>
-                <td><div class="actions-cell"><button class="btn ${p.resgatado_em ? "btn-secondary" : "btn-success"} btn-sm" data-redeem="${p.id}">${p.resgatado_em ? "Revisar" : "Confirmar resgate"}</button></div></td>
-            </tr>`).join("") : tableEmpty(7, "Nenhuma participante encontrada", "♙");
+                <td><div class="actions-cell"><button class="btn ${p.resgatado_em ? "btn-secondary" : "btn-success"} btn-sm" data-redeem="${p.id}">${p.resgatado_em ? "Revisar" : "Confirmar resgate"}</button>${p.data_nascimento && !p.consentimento_aniversario_revogado_em ? `<button class="btn btn-danger btn-sm" data-revoke-birthday="${p.id}">Revogar aniversário</button>` : ""}</div></td>
+            </tr>`).join("") : tableEmpty(8, "Nenhuma participante encontrada", "♙");
             el("participants-foot").innerHTML = `<span>${formatNumber(participants.length)} registros exibidos</span><span>O painel mostra as 200 participações mais recentes; o CSV inclui todas.</span>`;
         }
 
@@ -794,6 +806,7 @@
             el("campaign-start").value = toLocalInput(campaign.data_inicio);
             el("campaign-end").value = toLocalInput(campaign.data_fim);
             el("campaign-consent").value = campaign.texto_consentimento || "";
+            el("campaign-privacy-version").textContent = campaign.politica_privacidade_versao || "1.0";
             el("campaign-status").value = campaign.status || "rascunho";
         }
 
@@ -864,7 +877,7 @@
                 <div class="field"><label for="modal-campaign-name">Nome oficial</label><input id="modal-campaign-name" maxlength="100" required></div>
                 <div class="field"><label for="modal-campaign-start">Início planejado</label><input id="modal-campaign-start" type="datetime-local"></div>
                 <div class="field"><label for="modal-campaign-end">Encerramento planejado</label><input id="modal-campaign-end" type="datetime-local"></div>
-                <div class="field"><label for="modal-campaign-consent">Texto de consentimento</label><textarea id="modal-campaign-consent" maxlength="500" required>Aceito receber contato da Cappri via WhatsApp sobre este sorteio.</textarea></div>
+                <div class="field"><label for="modal-campaign-consent">Texto de ciência do Aviso de Privacidade</label><textarea id="modal-campaign-consent" maxlength="500" required>Li o Aviso de Privacidade e estou ciente de como meus dados serão utilizados nesta campanha.</textarea></div>
                 <div class="settings-note">A nova campanha será criada como rascunho. Depois, cadastre os prêmios e ative-a quando estiver pronta.</div>
             `, "Criar campanha", async () => {
                 const payload = {
@@ -960,6 +973,15 @@
 
             const redeem = event.target.closest("[data-redeem]");
             if (redeem) redeemModal((state.painel.participantes || []).find(p => p.id === Number(redeem.dataset.redeem)));
+
+            const revokeBirthday = event.target.closest("[data-revoke-birthday]");
+            if (revokeBirthday) {
+                const id = Number(revokeBirthday.dataset.revokeBirthday);
+                confirmModal("Revogar autorização de aniversário", "A data de nascimento será removida e a cliente deixará de fazer parte da lista de mensagens de aniversário. O registro da revogação ficará no histórico.", "Revogar autorização", async () => {
+                    await api(`/admin/participantes/${id}/revogar-aniversario`, { method: "PATCH" });
+                    closeModal(); toast("Autorização de aniversário revogada."); await loadPanel(state.painel.campanha.id, true);
+                });
+            }
 
             const copyInvite = event.target.closest("[data-copy-invite]");
             if (copyInvite) { await copyText(`${ROLETA_URL}?token=${encodeURIComponent(copyInvite.dataset.copyInvite)}`); toast("Link copiado."); }
