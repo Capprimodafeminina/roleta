@@ -75,3 +75,40 @@ test("mantém válida a sintaxe do JavaScript embutido na página", () => {
         assert.doesNotThrow(() => new Function(script[1]));
     }
 });
+
+test("mostra o mesmo link da cliente no QR e no campo copiável", () => {
+    const html = fs.readFileSync(path.join(__dirname, "..", "caixa.html"), "utf8");
+    const inicio = html.indexOf("function exibirConvite(token, campanha)");
+    const fim = html.indexOf("async function copiarLinkCliente()", inicio);
+    const funcao = html.slice(inicio, fim);
+
+    assert.match(html, /id="link-cliente"[^>]*readonly/);
+    assert.match(html, /id="botao-copiar-link"/);
+    assert.match(funcao, /linkClienteAtual = `\$\{URL_ROLETA\}\?token=\$\{encodeURIComponent\(token\)\}`/);
+    assert.match(funcao, /getElementById\("link-cliente"\)\.value = linkClienteAtual/);
+    assert.match(funcao, /QRCode\.toCanvas\(canvas, linkClienteAtual/);
+});
+
+test("usa caixa.html como único gerador de convites do painel", () => {
+    const html = fs.readFileSync(path.join(__dirname, "..", "admin.html"), "utf8");
+    const atalhos = [...html.matchAll(/<a class="btn btn-primary" href="caixa\.html">＋ Gerar convite<\/a>/g)];
+
+    assert.equal(atalhos.length, 2, "visão geral e convites devem abrir o mesmo gerador");
+    assert.doesNotMatch(html, /function generateInvite\s*\(/);
+    assert.doesNotMatch(html, /api\("\/admin\/convites", \{ method: "POST" \}\)/);
+    assert.doesNotMatch(html, /Convite gerado/);
+});
+
+test("mantém válida a sintaxe dos scripts da funcionária e da administração", () => {
+    for (const arquivo of ["caixa.html", "admin.html"]) {
+        const html = fs.readFileSync(path.join(__dirname, "..", arquivo), "utf8");
+        const scriptsSemSrc = [
+            ...html.matchAll(/<script(?![^>]*\bsrc=)[^>]*>([\s\S]*?)<\/script>/gi)
+        ];
+
+        assert.ok(scriptsSemSrc.length > 0, `${arquivo} precisa conter JavaScript embutido`);
+        for (const script of scriptsSemSrc) {
+            assert.doesNotThrow(() => new Function(script[1]), `${arquivo} precisa ter JavaScript válido`);
+        }
+    }
+});
